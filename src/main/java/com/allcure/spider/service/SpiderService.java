@@ -142,7 +142,13 @@ public class SpiderService {
             ds.addAll(getDoctorsOfOnePage(doctEles, depA));
 
             Elements elements = document.select(".p_text[rel=true]");
-            String pageNumStr = elements.get(0).html();
+            String pageNumStr = null;
+            if (elements == null || elements.size() == 0) {
+                pageNumStr = "1";
+            } else {
+                pageNumStr = elements.get(0).html();
+
+            }
 
             //提取页码
             Matcher matcher = pattern.matcher(pageNumStr);
