@@ -28,7 +28,7 @@ public class SpiderService {
     private String deptListUrl = "https://www.haodf.com/keshi/list.htm";
     Pattern pattern = Pattern.compile("\\d+");
     WebClient client = new WebClient();
-    private String savePath = "F:/tmp/spide_doctor";
+    public static final String savePath = "F:/tmp/spide_doctor";
     private Gson gson = new Gson();
     private String cacheFile = savePath + "/cache.dat";
     private String cacheInfo = null;
