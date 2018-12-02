@@ -34,6 +34,9 @@ public class SpiderService {
     private String cacheInfo = null;
     private String errInfoFile = savePath + "/error.log";
 
+    private int perDoctorDelay = 1000 * 7;
+    private int doctor2DetailDelay = 1000 * 2;
+
     public void spide() {
 
 //        RestTemplate restTemplate = new RestTemplate();
@@ -203,7 +206,7 @@ public class SpiderService {
                 System.out.println("准备获取：" + di.getDeptType() + " " + di.getDeptName() + " " + di.getDoctorName());
                 getDoctorDetail(doUrl, di);
                 persistence(di);
-                Thread.sleep(1000 * 5);
+                Thread.sleep(perDoctorDelay);
             } else {
                 System.out.println("已存在：" + di.getDeptType() + " " + di.getDeptName() + " " + di.getDoctorName());
             }
@@ -317,7 +320,7 @@ public class SpiderService {
         if (documentTreatment.select("#doctorgood .ltdiv a") != null
                 && documentTreatment.select("#doctorgood .ltdiv a").size() > 0) {
             String treamentUrl = "https:" + documentTreatment.select("#doctorgood .ltdiv a").last().attr("href");
-            Thread.sleep(1000 * 2);
+            Thread.sleep(doctor2DetailDelay);
             di.setTreatments(getDoctorTreatments(treamentUrl));
         }
 
