@@ -14,6 +14,10 @@ public class SpiderDataService {
      */
     public void jsonToExcel() {
         List<DoctorInfo> doctors = getDoctorInfos();
+        for (DoctorInfo item: doctors) {
+            System.out.println(item);
+
+        }
     }
 
     /**
