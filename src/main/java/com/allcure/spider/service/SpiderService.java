@@ -294,7 +294,11 @@ public class SpiderService {
         } else {
             di.setGiftCnt(0);
         }
-        di.setTitle(aboutElement.child(0).child(0).child(2).child(2).text());
+        if (picUrl == null || picUrl.length() <=0) {
+            di.setTitle(aboutElement.child(0).child(0).child(1).child(2).text());
+        } else {
+            di.setTitle(aboutElement.child(0).child(0).child(2).child(2).text());
+        }
         di.setGoodAt(aboutElement.select("#truncate_DoctorSpecialize").text().replace("\"","").trim());
 
         if (aboutElement.select("#full") != null && aboutElement.select("#full").size() > 0) {
