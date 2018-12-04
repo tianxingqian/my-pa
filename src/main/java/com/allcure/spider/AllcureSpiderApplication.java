@@ -1,5 +1,6 @@
 package com.allcure.spider;
 //
+import com.allcure.spider.service.SpiderDataUpdateService;
 import com.allcure.spider.service.SpiderService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -18,7 +19,9 @@ public class AllcureSpiderApplication {
     @Scheduled(cron = "0/10 * * * * ?")
     public void doExecute() {
         System.out.println("==定时任务===");
-        SpiderService spiderService = new SpiderService();
-        spiderService.spide();
+//        SpiderService spiderService = new SpiderService();
+//        spiderService.spide();
+        SpiderDataUpdateService service = new SpiderDataUpdateService();
+        service.updateDoctor();
     }
 }

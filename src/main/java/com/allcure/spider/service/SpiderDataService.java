@@ -1,9 +1,15 @@
 package com.allcure.spider.service;
 
 import com.allcure.spider.model.DoctorInfo;
+import com.allcure.spider.model.Treatment;
 import com.google.gson.Gson;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 
-import java.io.File;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,25 +20,81 @@ public class SpiderDataService {
      */
     public void jsonToExcel() {
         List<DoctorInfo> doctors = getDoctorInfos();
-        for (DoctorInfo item: doctors) {
-            System.out.println(item);
+        String fileName = SpiderService.savePath + "/doctors.xls";
+        System.out.println("开始导出excel");
+        exportExcel(fileName, doctors);
+        System.out.println("导出完成");
 
-        }
+
     }
+
+    /**
+     *  将doctor 数据列表 导出excel
+     * @param fileName
+     * @param doctors
+     */
+    private void exportExcel(String fileName, List<DoctorInfo> doctors) {
+        Workbook wb = new HSSFWorkbook();
+        Sheet sheet = wb.createSheet("医生");
+        int rowIndex = 0;
+
+        String[] tiles = {
+                "序号", "专科", "科室", "医生姓名",  "职称", "擅长", "头像URL", "执业经历", "个人网站",
+                "临床经验"
+        };
+        //添加标题行
+        Row row = sheet.createRow(rowIndex++);
+        for (int x=0; x<tiles.length; x++) {
+            Cell cell = row.createCell(x);
+            cell.setCellValue(tiles[x]);
+        }
+
+        for (DoctorInfo item : doctors) {
+            Row rowT = sheet.createRow(rowIndex ++);
+            rowT.createCell(0).setCellValue(rowIndex - 1);
+            rowT.createCell(1).setCellValue(item.getDeptType());
+            rowT.createCell(2).setCellValue(item.getDeptName());
+            rowT.createCell(3).setCellValue(item.getDoctorName());
+            rowT.createCell(4).setCellValue(item.getTitle());
+            rowT.createCell(5).setCellValue(item.getGoodAt());
+            rowT.createCell(6).setCellValue(item.getProfilePicUrl());
+            rowT.createCell(7).setCellValue(item.getResume());
+            rowT.createCell(8).setCellValue(item.getPersonalWebUrl());
+
+            StringBuilder sb = new StringBuilder();
+            if (item.getTreatments() != null && item.getTreatments().size() > 0) {
+                for (Treatment t : item.getTreatments()) {
+                    sb.append(t.getDisease() + ":" + t.getCnt()).append("; ");
+                }
+                sb.substring(0, sb.length() - 2);
+            }
+            rowT.createCell(9).setCellValue(sb.toString());
+        }
+
+        try(OutputStream fileOut = new FileOutputStream(fileName)) {
+            ((HSSFWorkbook) wb).write(fileOut);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
 
     /**
      * 入库
      */
     public void jsonToDb() {
         List<DoctorInfo> doctors = getDoctorInfos();
-        System.out.println();
+
     }
 
     /**
      * 将json数据转成对象 {@link DoctorInfo}
      * @return
      */
-    private List<DoctorInfo> getDoctorInfos() {
+    public List<DoctorInfo> getDoctorInfos() {
         Gson gson = new Gson();
         //TODO 将json数据转成对象
         //读取所有的json文件
@@ -41,7 +103,14 @@ public class SpiderDataService {
         List<DoctorInfo> rsList = new ArrayList<>();
         for (File file : files) {
             //读取json文件的内容
-            String jsonStr = readFileContent(file);
+            String jsonStr = null;
+            try {
+                jsonStr = readFileContent(file);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             //存入List中
             DoctorInfo info = gson.fromJson(jsonStr, DoctorInfo.class);
             rsList.add(info);
@@ -49,19 +118,32 @@ public class SpiderDataService {
         return rsList;
     }
 
-    private String readFileContent(File file) {
-        return null;
+    /**
+     * 读取文本内容
+     * @param file
+     * @return
+     * @throws IOException
+     */
+    private String readFileContent(File file) throws IOException {
+        FileReader reader = new FileReader(file);
+        BufferedReader br = new BufferedReader(reader);
+        StringBuilder sb = new StringBuilder();
+        String tem = null;
+        while((tem = br.readLine()) != null) {
+            sb.append(tem);
+        }
+        return sb.toString();
     }
 
-    private List<File> getJsonFile() {
+    public List<File> getJsonFile() {
         String savePath = SpiderService.savePath;
 
         List<File> files = new ArrayList<>();
         getJsonFile(savePath, files);
 
-        for (File item : files) {
-            System.out.println(item.getPath());
-        }
+//        for (File item : files) {
+//            System.out.println(item.getPath());
+//        }
 
         return files;
     }
@@ -70,9 +152,24 @@ public class SpiderDataService {
 
         File file = new File(savePath);
         if (file.isDirectory()) {
-            File[] filesList = file.listFiles();
+            File[] filesList = file.listFiles(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    if (new File(dir.getPath() + "/" + name).isDirectory()) {
+                        return true;
+                    } else if (name.endsWith(".json")) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            });
             for (File item : filesList) {
-                getJsonFile(savePath, files);
+                if (item.isFile()) {
+                    files.add(item);
+                } else {
+                    getJsonFile(item.getPath(), files);
+                }
             }
         } else {
             files.add(file);

@@ -230,7 +230,7 @@ public class SpiderService {
      * 保存对象
      * @param di
      */
-    private void persistence(DoctorInfo di) {
+    public void persistence(DoctorInfo di) {
         try {
             String fileDirStr = savePath + "/" + di.getDeptType() + "/" + di.getDeptName();
             File fileDir = new File(fileDirStr);
@@ -248,7 +248,7 @@ public class SpiderService {
         }
     }
 
-    private void getDoctorDetail(String doUrl, DoctorInfo di) throws InterruptedException {
+    public void getDoctorDetail(String doUrl, DoctorInfo di) throws InterruptedException {
 
 //        String htmlStr = httpRequest(doUrl);
         Document documentAbout = null;
@@ -385,7 +385,7 @@ public class SpiderService {
     }
 
 
-    private static String httpRequest(String requestUrl) {
+    public static String httpRequest(String requestUrl) {
 
         StringBuffer buffer = null;
         BufferedReader bufferedReader = null;

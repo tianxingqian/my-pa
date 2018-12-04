@@ -41,6 +41,19 @@ public class DoctorInfo {
 
     private String deptUrl;
 
+    /**
+     * 数据的版本，空、0 表示未修改过
+     */
+    private Integer dataVersion;
+
+    public Integer getDataVersion() {
+        return dataVersion;
+    }
+
+    public void setDataVersion(Integer dataVersion) {
+        this.dataVersion = dataVersion;
+    }
+
     public String getDeptUrl() {
         return deptUrl;
     }
