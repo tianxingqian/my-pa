@@ -19,9 +19,9 @@ public class AllcureSpiderApplication {
     @Scheduled(cron = "0/10 * * * * ?")
     public void doExecute() {
         System.out.println("==定时任务===");
-//        SpiderService spiderService = new SpiderService();
-//        spiderService.spide();
-        SpiderDataUpdateService service = new SpiderDataUpdateService();
-        service.updateDoctor();
+        SpiderService spiderService = new SpiderService();
+        spiderService.spide();
+//        SpiderDataUpdateService service = new SpiderDataUpdateService();
+//        service.updateDoctor();
     }
 }

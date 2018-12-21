@@ -3,9 +3,7 @@ package com.allcure.spider.service;
 
 import com.allcure.spider.model.DoctorInfo;
 import com.allcure.spider.model.Treatment;
-import com.gargoylesoftware.htmlunit.ElementNotFoundException;
 import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlDivision;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.google.gson.Gson;
@@ -14,6 +12,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 
 public class SpiderService {
 
+    private Logger logger = LoggerFactory.getLogger(SpiderService.class);
     private String deptListUrl = "https://www.haodf.com/keshi/list.htm";
     Pattern pattern = Pattern.compile("\\d+");
     WebClient client = new WebClient();
@@ -112,6 +113,7 @@ public class SpiderService {
         Map<String, List<DoctorInfo>> rs = new HashMap<>();
 
         boolean findFlag = false;
+        boolean isNewFor = false;
         for(String dep : deptList) {
             String[] depA = dep.split("_");
 
@@ -132,12 +134,15 @@ public class SpiderService {
             }
             //缓存到的页
             int cachePage = Integer.valueOf(cacheInfo.split("_")[1]);
-
+            if (isNewFor) {
+                cachePage = 0;
+            }
             List<DoctorInfo> ds = new ArrayList<>();
             rs.put(depA[0], ds);
             String urlStr = url + depA[1] + "/daifu_all" + urlSub;
+            logger.debug("获取首页" + depA[0]);
             String htmlStr = httpRequest(urlStr);
-
+            logger.debug("获取首页成功");
             Document document = Jsoup.parse(htmlStr);
             //处理第1页的内容
             Elements doctEles = document.select(".good_doctor_list_td");
@@ -158,27 +163,31 @@ public class SpiderService {
             matcher.find();
             String xx = matcher.group();
             int pageNum = Integer.parseInt(xx);
-
+            logger.debug("准备循环页");
             for(int i = 2; i<=pageNum; i++) {
                 i = cachePage > i ? cachePage : i;
+                logger.debug("第 " + i + " 页");
                 //存入缓存，读一页存一次
                 putCache(depA[0] + "_" + i);
 
                 String url2 = url + depA[1] + "/daifu_all_" + i + urlSub;
-
+                logger.debug("去取第" + i + "页面的数据");
                 String htmlStr2 = httpRequest(url2);
+                logger.debug("已取出第" + i + "页面的数据");
                 Document doc = Jsoup.parse(htmlStr2);
                 doctEles = doc.select(".good_doctor_list_td");
                 System.out.println(depA[0] + " 第" + i + "页");
                 ds.addAll(getDoctorsOfOnePage(doctEles, depA));
-
             }
+            //新的循环
+            isNewFor = true;
         }
 
         return rs;
     }
 
     private List<DoctorInfo> getDoctorsOfOnePage(Elements doctEles, String[] depA) throws InterruptedException {
+        logger.debug("开始遍历页面中的医生");
         List<DoctorInfo> doctorInfos = new ArrayList<>();
         for (int j=0; j< doctEles.size(); j++) {
             DoctorInfo di = new DoctorInfo();
@@ -197,6 +206,7 @@ public class SpiderService {
             j++;
             String deptName = doctEles.get(j).text().replace(" ", "").trim();
             di.setDeptName(deptName);
+
             //热度
             j++;
             //联系大夫
@@ -205,6 +215,7 @@ public class SpiderService {
             if (! hasSpide(di)) {
                 System.out.println("准备获取：" + di.getDeptType() + " " + di.getDeptName() + " " + di.getDoctorName());
                 getDoctorDetail(doUrl, di);
+                di.setDataVersion(1);
                 persistence(di);
                 Thread.sleep(perDoctorDelay);
             } else {
@@ -257,8 +268,11 @@ public class SpiderService {
         try {
             try {
                 HtmlPage page = client.getPage(doUrl);
+                logger.debug("获取到医生的数据，准备解析");
                 HtmlDivision division = page.getHtmlElementById("bp_doctor_about");
+                logger.debug("解析出About");
                 documentAbout = Jsoup.parse(division.asXml());
+                logger.debug("解析出document");
                 documentTreatment = Jsoup.parse(page.getHtmlElementById("bp_doctor_servicestar").asXml());
             } catch (Exception e) {
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -276,29 +290,33 @@ public class SpiderService {
         //介绍
         Element aboutElement = documentAbout.select(".middletr .lt").first();
 
-
         String picUrl = aboutElement.select(".ys_tx img").attr("src");
+        logger.debug("取头像URL" + picUrl);
         if (picUrl != null && picUrl.length() > 0) {
             di.setProfilePicUrl("https:" + aboutElement.select(".ys_tx img").attr("src"));
         }
         di.setDeptUrl("https:" + aboutElement.select("td[width=231] a").attr("href"));
+        logger.debug("获取科室的URL" + di.getDeptUrl());
         di.setDeptName(aboutElement.select("td[width=231] a h2").text().trim());
-
+        logger.debug("获取科室名称" + di.getDeptUrl());
         if (StringUtils.isNumeric(aboutElement.select("td[width=110] a span").first().text())) {
             di.setThankMailCnt(Integer.valueOf(aboutElement.select("td[width=110] a span").first().text()));
         } else {
             di.setThankMailCnt(0);
         }
+        logger.debug("获取感谢信数量" + di.getThankMailCnt());
         if (StringUtils.isNumeric(aboutElement.select("td[width=110] a span").last().text())) {
             di.setGiftCnt(Integer.valueOf(aboutElement.select("td[width=110] a span").last().text()));
         } else {
             di.setGiftCnt(0);
         }
+        logger.debug("获取礼物数量" + di.getGiftCnt());
         if (picUrl == null || picUrl.length() <=0) {
             di.setTitle(aboutElement.child(0).child(0).child(1).child(2).text());
         } else {
             di.setTitle(aboutElement.child(0).child(0).child(2).child(2).text());
         }
+        logger.debug("获取Title" + di.getTitle());
         di.setGoodAt(aboutElement.select("#truncate_DoctorSpecialize").text().replace("\"","").trim());
 
         if (aboutElement.select("#full") != null && aboutElement.select("#full").size() > 0) {
@@ -326,6 +344,7 @@ public class SpiderService {
             String treamentUrl = "https:" + documentTreatment.select("#doctorgood .ltdiv a").last().attr("href");
             Thread.sleep(doctor2DetailDelay);
             di.setTreatments(getDoctorTreatments(treamentUrl));
+            logger.debug("治疗病例数：" + di.getTreatments().size());
         }
 
     }
@@ -399,7 +418,9 @@ public class SpiderService {
             httpUrlConn = (HttpURLConnection) url.openConnection();
             httpUrlConn.setDoInput(true);
             httpUrlConn.setRequestMethod("GET");
-            httpUrlConn.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT; DigExt)");
+            httpUrlConn.setRequestProperty("User-Agent",
+                    "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)");
+//            httpUrlConn.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT; DigExt)");
 
             // 获取输入流
             inputStream = httpUrlConn.getInputStream();
