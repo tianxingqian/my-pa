@@ -11,21 +11,45 @@ import org.apache.poi.ss.usermodel.Workbook;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SpiderDataService {
+
+    private Gson gson = new Gson();
 
     /**
      * json 转Excel
      */
     public void jsonToExcel() {
-        List<DoctorInfo> doctors = getDoctorInfos();
-        String fileName = SpiderService.savePath + "/doctors.xls";
         System.out.println("开始导出excel");
-        exportExcel(fileName, doctors);
+        exportByDept("f:/doctors");
         System.out.println("导出完成");
 
 
+    }
+
+    /**
+     * 根据科室导出数据
+     * @param savePath
+     */
+    private void exportByDept(String savePath) {
+        //获取科室, 根据路径获取文件夹，此为科室名称
+        File file = new File(SpiderService.savePath);
+        //按科室读取文件
+        for(File item : file.listFiles()) {
+            if (item.isDirectory()) {
+                String excelFileName = savePath + "/" + item.getName() + ".xls";
+                if (new File(excelFileName).exists()) {
+                    continue;
+                }
+                List<File> deptFiles = new ArrayList<>();
+                getJsonFile(item.getAbsolutePath(), deptFiles);
+                List<DoctorInfo> doctors = getDoctorInfos(deptFiles);
+                exportExcel(excelFileName, doctors, item.getName());
+            }
+        }
     }
 
     /**
@@ -33,9 +57,11 @@ public class SpiderDataService {
      * @param fileName
      * @param doctors
      */
-    private void exportExcel(String fileName, List<DoctorInfo> doctors) {
+    private void exportExcel(String fileName, List<DoctorInfo> doctors, String deptType) {
         Workbook wb = new HSSFWorkbook();
-        Sheet sheet = wb.createSheet("医生");
+
+        //循环添加sheet
+        Sheet sheet = wb.createSheet(deptType);
         int rowIndex = 0;
 
         String[] tiles = {
@@ -83,22 +109,15 @@ public class SpiderDataService {
 
 
     /**
-     * 入库
-     */
-    public void jsonToDb() {
-        List<DoctorInfo> doctors = getDoctorInfos();
-
-    }
-
-    /**
      * 将json数据转成对象 {@link DoctorInfo}
      * @return
      */
-    public List<DoctorInfo> getDoctorInfos() {
-        Gson gson = new Gson();
+    public List<DoctorInfo> getDoctorInfos(List<File> files) {
+
         //TODO 将json数据转成对象
         //读取所有的json文件
-        List<File> files = getJsonFile();
+
+        System.out.println("文件数：" + files.size());
         //转成DoctorInfo对象
         List<DoctorInfo> rsList = new ArrayList<>();
         for (File file : files) {
@@ -112,8 +131,13 @@ public class SpiderDataService {
                 e.printStackTrace();
             }
             //存入List中
-            DoctorInfo info = gson.fromJson(jsonStr, DoctorInfo.class);
-            rsList.add(info);
+            try {
+                DoctorInfo info = gson.fromJson(jsonStr, DoctorInfo.class);
+                rsList.add(info);
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println(file.getAbsolutePath());
+            }
         }
         return rsList;
     }
@@ -132,6 +156,8 @@ public class SpiderDataService {
         while((tem = br.readLine()) != null) {
             sb.append(tem);
         }
+        reader.close();
+        br.close();
         return sb.toString();
     }
 

@@ -16,11 +16,13 @@ public class SpiderDataUpdateService {
     SpiderService spiderService = new SpiderService();
     int dataVersion = 0;
     Logger logger = Logger.getLogger(SpiderDataUpdateService.class.getName());
+
     public void updateDoctor() {
 
         //读取医生信息
         dataService = new SpiderDataService();
-        List<DoctorInfo> doctorInfoList = dataService.getDoctorInfos();
+
+        List<DoctorInfo> doctorInfoList = dataService.getDoctorInfos(dataService.getJsonFile());
         //循环， 找出没有头像的数据，进行修复
         for (int i=0; i<doctorInfoList.size(); i++) {
             DoctorInfo doctorInfo = doctorInfoList.get(i);
